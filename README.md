@@ -18,16 +18,15 @@ Built on **JacLang 0.8+** and **byLLM**, it combines graph-based reasoning with 
 ---
 
 ## 🧱 Core Architecture 
-
-```mermaid
+```
+mermaid
 graph TD
     A[RepoMapper] --> B[CodeAnalyzer]
     B --> C[DocGenie]
     C --> D[Markdown Documentation]
     D --> E[Generated Mermaid Diagram + File Tree]
     A --> F[GitPython + Local Clone]
-    B --> G[LLM Structural Analysis (ReAct via byLLM)]
-
+    B --> G[LLM Structural Analysis &#40;ReAct via byLLM&#41;]
 ```
 
 | **Module**          | **Purpose**                                                                               |
