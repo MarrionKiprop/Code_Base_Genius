@@ -91,39 +91,53 @@ This starts Codebase Genius locally and serves the jac-cloud backend at:
 http://localhost:8000
 
 ### 4️⃣ Analyze a GitHub repository
+If you prefer to trigger analysis manually through a terminal or script:
 ```
 curl -X POST http://localhost:8000/walker/codegenius_supervisor \
 -H "Content-Type: application/json" \
 -d '{"body":{"repo_url":"https://github.com/Qooley/system_shared_repo.git"}}'
 ```
+This will automatically clone, analyze, and generate documentation for the specified repository.
+
 ### 5️⃣ View generated documentation
-Markdown documentation will be saved in:
+After processing, Markdown documentation is saved in:
 ```
 generated_docs/<repo_name>.md
 ```
+The generated files include:
+
+Code structure summaries (classes, functions, nodes, walkers)
+
+Mermaid diagrams for call graphs
+
+Overview and insights powered by byLLM
+
 ### 6️⃣ Launch the Streamlit Frontend
-Once the backend has produced documentation, you can visualize it via the Streamlit dashboard:
 ```
 streamlit run FE/app.py
 ```
-This launches an interactive UI where you can:
+This launches the interactive Codebase Genius dashboard, where users can:
+```
+🧩 Enter a GitHub repository URL (e.g. https://github.com/Qooley/system_shared_repo.git)
 
-Browse and read auto-generated documentation.
+🚀 Submit it for analysis — the frontend sends it to the backend API automatically
 
-Trigger new analyses directly from the frontend.
+⏳ Wait as Codebase Genius processes and generates documentation
 
-Preview Mermaid diagrams and CCG structures.
+📖 View, browse, and interact with the results (Markdown + Mermaid visualization)
+```
 
 Frontend default URL:
 http://localhost:8501
 
 ### 🧩 Full Workflow Summary
 
-Start backend → jac serve BE/main.jac
+| **Step** | **Component**                           | **Purpose**                                                                     |
+| -------- | --------------------------------------- | ------------------------------------------------------------------------------- |
+| 1️⃣      | **Backend (Jac Cloud)** — `BE/main.jac` | Runs repo cloning, LLM-based parsing, and documentation generation              |
+| 2️⃣      | **Frontend (Streamlit)** — `FE/app.py`  | Lets users input GitHub URLs, submit jobs, and wait for documentation rendering |
+| 3️⃣      | **Output** — `BE/generated_docs/`       | Markdown and Mermaid diagrams automatically saved and displayed                 |
 
-Run analysis → curl ... or via Streamlit
-
-View documentation → either in BE/generated_docs/ or via Streamlit UI
 
 ## 🧰 Technical Stack
 
