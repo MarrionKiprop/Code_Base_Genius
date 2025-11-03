@@ -1,0 +1,45 @@
+# =======================================================
+# CODEBASE GENIUS — REQUIREMENTS
+# Derived directly from shared Jac + Python source files
+# =======================================================
+
+# --- JacLang Core ---
+jaclang==0.8.10
+jac-cloud==0.8.10
+byllm>=0.2.4
+
+# --- LLM Layer ---
+litellm==1.79.1
+openai>=1.50.0
+
+# --- Web / API Layer ---
+fastapi==0.120.4
+uvicorn[standard]==0.30.3
+
+# --- Frontend / UI Layer ---
+streamlit==1.40.0
+requests==2.32.3
+
+# --- Repository Management ---
+GitPython==3.1.43
+gitdb==4.0.11
+# System dependency:
+#   sudo apt-get install -y git
+
+# --- Docs & Visualization ---
+markdown==3.7
+markdownify==0.12.1
+pymdown-extensions==10.8
+mermaid-py==0.6.6
+graphviz==0.20.3
+
+# --- Utility / Config ---
+python-dotenv==1.0.1
+tqdm>=4.67.0
+rich>=13.9.0
+typing-extensions>=4.12.2
+
+# =======================================================
+# Python 3.12 Built-ins (No install required)
+# os, re, shutil, sys, tempfile, datetime, json
+# =======================================================
