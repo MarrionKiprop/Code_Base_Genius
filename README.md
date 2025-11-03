@@ -1,5 +1,5 @@
 # Codebase Genius  
-### *Autonomous Documentation & Code Mapping Agent for Jac + Python Repositories*
+### *Autonomous Documentation & Code Mapping Agent for Github Repositories*
 
 ---
 
