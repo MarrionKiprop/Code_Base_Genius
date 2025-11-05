@@ -110,37 +110,54 @@ walker codegenius_supervisor {
 
     print("Documentation generated successfully!");
 
+md_text = "";
+# Always publish to a stable, project-root folder
+let base_dir = os.getcwd();
+let public_dir = os.path.join(base_dir, "generated_docs");
 
-    md_text = "";
-    public_dir = "generated_docs";
-    if not os.path.exists(public_dir) {
-        os.makedirs(public_dir);
-    }
+if not os.path.exists(public_dir) {
+    os.makedirs(public_dir);
+}
 
-    if md_path and os.path.exists(md_path) {
-        md_text = open(md_path, "r", encoding="utf-8").read();
-        print("Markdown loaded, length: " + str(len(md_text)) + " chars");
+if md_path and os.path.exists(md_path) {
+    md_text = open(md_path, "r", encoding="utf-8").read();
+    print("Markdown loaded, length: " + str(len(md_text)) + " chars");
 
-        let repo_slug = repo_name_from_url(self.repo_url);
-        let final_path = os.path.join(public_dir, repo_slug + ".md");
-        open(final_path, "w", encoding="utf-8").write(md_text);
-        print("Persisted for UI: " + final_path);
+    let repo_slug = repo_name_from_url(self.repo_url).replace("/", "_");
+    let final_path = os.path.join(public_dir, repo_slug + ".md");
 
-        md_path = final_path;
-    } else {
-        print("Markdown file missing or not accessible at: " + str(md_path));
-    }
+    open(final_path, "w", encoding="utf-8").write(md_text);
+    print("Documentation saved at: " + final_path);
 
-    result = {
-        "status": "ok",
-        "repo": self.repo_url,
-        "files_cloned": len(mapper.file_index),
-        "files_parsed": parsed_files,
-        "output_md": md_path,
-        "markdown_text": md_text
-    };
+    # Only expose the clean, stable path going forward
+    md_path = final_path;
+} else {
+    print("Markdown file missing or not accessible at: " + str(md_path));
+}
 
-print("Report finalized successfully!");
+# --- add clear metrics and only report stable paths ---
+
+let total_files = len(mapper.file_index);
+let sampled_files = len(self.priority + self.others);  # analyzed set
+let parsed_files_count = parsed_files;
+
+result = {
+    "status": "ok",
+    "repo": self.repo_url,
+    "total_files": total_files,
+    "sampled_files": sampled_files,
+    "files_parsed": parsed_files_count,
+    "output_md": md_path,        # <- stable path only
+    "markdown_text": md_text
+};
+
+print(
+    "Report finalized. "
+    + "Total=" + str(total_files)
+    + ", Sampled=" + str(sampled_files)
+    + ", Parsed=" + str(parsed_files_count)
+    + ", Out=" + md_path
+);
 report result;
 return result;
     }

@@ -77,7 +77,15 @@ can generate with entry {
 
     
     let files_summary = "Files in repository:\n" + "\n".join(self.file_index);
-    let md = self.compose_markdown(tree_content + "\n\n" + files_summary + "\n\n" + self.ccg_nodes);
+    let combined = tree_content + "\n\n" + files_summary + "\n\n" + self.ccg_nodes;
+
+    if len(combined) > 5000 {
+        print("Truncating markdown input from " + str(len(combined)) + " to 1000 chars");
+        combined = combined[:1000];
+}
+
+let md = self.compose_markdown(combined);
+
 
     if type(md) != str {
         md = "" if not md else str(md);
@@ -127,16 +135,19 @@ Generate Markdown with these sections:
    - Table with: *File*, *Type (Python/Jac)*, *Description*. e.g. 
    e.g. def is_prime(n) or Class DatabaseConnector or Walker DataFetcher or Node UserNode or same for other languages like JavaScript, Java, etc.
     Just do a few in main code files. 
-6.  *Elements of the code in .py, .jac, etc by naming and describing names of Classes, Functions, Nodes, Edges, Walkers)*,
+6.  Few classes, fucntions, walkers, nodes edges with short descriptions.,
 
 7. **Architecture & Relationships**
    - Use the Mermaid diagram and CCG to explain how parts interact.
 8. **API / Class Reference**
    - List major functions and methods, include small code examples if found.
 9. **Limitations & Known Issues**
-10. **Future Enhancements**
-11. **Credits & Licensing**
-12. **Footer**
+10. **Summary of the all markdown documentation - 200 words**
+11. **Future Enhancements**
+12. **Credits & Licensing**
+( Licensing and credit -- Marrion Kiprop © 2025 -- for erducational purposes only. )
+    
+
 
 Formatting:
 - Use Markdown headings and code blocks.

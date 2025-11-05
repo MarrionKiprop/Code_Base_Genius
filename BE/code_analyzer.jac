@@ -3,6 +3,7 @@
 import from byllm.llm { Model }
 import os;
 import re;
+import json;
 
 glob llm = Model(model_name="openai/gpt-4o-mini", verbose=False, timeout=120);
 
@@ -71,8 +72,6 @@ node CodeAnalyzer {
         return "other";
     }
 }
-
-    def build_ccg_llm_summary(path: str, content: str, lang: str) -> dict[str, str] by llm(method="Simple");
 
     def build_ccg_llm(path: str, content: str, lang: str) -> dict[str, str] by llm(method="Simple");
 
@@ -147,7 +146,38 @@ node CodeAnalyzer {
                     src[0] +>:Calls:+> dst[0];
                 }
             }
+    
         }
+
+        if "nodes" in ccg {
+    for n in ccg["nodes"] {
+        let nname = n["name"] if type(n) == dict and "name" in n else str(n);
+        if not nname { continue; }
+        # Represent Jac node as a Class-like vertex (or define a new Node archetype)
+        let cnode = Class(name=nname, file=ccg["file"]);
+        self ++> cnode;
+    }
+}
+
+if "walkers" in ccg {
+    for w in ccg["walkers"] {
+        let wname = w["name"] if type(w) == dict and "name" in w else str(w);
+        if not wname { continue; }
+        let fndef = Function(name=wname, file=ccg["file"]);
+        fnode +>:Contains:+> fndef;
+    }
+}
+
+if "edges" in ccg {
+    for e in ccg["edges"] {
+        let ename = e["name"] if type(e) == dict and "name" in e else str(e);
+        if not ename { continue; }
+        # store as Class-like too, or add a dedicated Edge node archetype if you prefer
+        let enode = Class(name=ename, file=ccg["file"]);
+        self ++> enode;
+    }
+}
+
     }
    can analyze with entry {
     if not self.files {
@@ -157,18 +187,21 @@ node CodeAnalyzer {
 
     let total = len(self.files);
     print("Total files detected: " + str(total));
+    if len(self.files) > 60 {
+    llm = Model(model_name="openai/gpt-3.5-turbo", verbose=False, timeout=90);
+}
 
     # --- Dynamic scan control ---
-    if total <= 30 {
+    if total <= 6 {
         print("Mode: Full analysis");
         self.run_analysis(self.files, "deep");
     } elif total <= 100 {
         print("Mode: Balanced sampling (20 representative files)");
-        let sample = self.files[:30];
+        let sample = self.files[:8];
         self.run_analysis(sample, "balanced");
     } else {
         print("Mode: Quick summary scan (10 representative files)");
-        let sample = self.files[:40];
+        let sample = self.files[:10];
         self.run_analysis(sample, "summary");
     }
 
@@ -185,43 +218,52 @@ def run_analysis(files: list, mode: str) {
             continue;
         }
 
-        # --- Handle Jupyter Notebooks (.ipynb) ---
-        if p.endswith(".ipynb") {
-            print("Notebook detected: " + p);
-            let content = open(abs_path, "r", encoding="utf-8", errors="ignore").read();
-            let nb_json = json.loads(raw);
+        # --- Handle notebooks (.ipynb) ---
+if p.endswith(".ipynb") {
+    print("Notebook detected: " + p);
 
-            if "cells" in nb_json and len(nb_json["cells"]) > 0 {
-                let src_cells = [];
-                for cell in nb_json["cells"] {
-                    if cell.get("cell_type", "") == "code" and "source" in cell {
-                        src_cells.append("\n".join(cell["source"]));
-                    }
-                    if len(src_cells) >= 2 { break; }
-                }
+    let content = "";  # ensure declared for later use
+    let raw = open(abs_path, "r", encoding="utf-8", errors="ignore").read();
+    let raw_stripped = raw.lstrip();
 
-                if len(src_cells) > 0 {
-                    content = "\n\n".join(src_cells)[:2000];
-                    print("Extracted " + str(len(src_cells)) + " code cell(s) from notebook.");
-                } else {
-                    print("No usable code in notebook: " + p);
-                    continue;
+    if not raw_stripped {
+        print("Skipping empty or invalid notebook: " + p);
+        continue;
+    }
+
+    if raw_stripped.startswith("{") or raw_stripped.startswith("[") {
+        let nb_json = json.loads(raw_stripped);
+
+        if "cells" in nb_json and len(nb_json["cells"]) > 0 {
+            let src_cells = [];
+            for cell in nb_json["cells"] {
+                if cell.get("cell_type", "") == "code" and "source" in cell {
+                    src_cells.append("\n".join(cell["source"]));
                 }
+                if len(src_cells) >= 2 { break; }
+            }
+            if len(src_cells) > 0 {
+                content = "\n\n".join(src_cells)[:800];
+                print("Extracted " + str(len(src_cells)) + " code cell(s) from notebook.");
             } else {
-                print("No cells in notebook: " + p);
+                print("No usable code in notebook: " + p);
                 continue;
             }
         } else {
-            let content = open(abs_path, "r", encoding="utf-8", errors="ignore").read();
-
-            # --- Truncate very large files ---
-            if len(content) > 2000 {
-                print("Truncating large file: " + p);
-                content = content[:2000];
-            }
+            print("No cells in notebook: " + p);
+            continue;
         }
+    } else {
+        print("Notebook file not valid JSON, skipping: " + p);
+        continue;
+    }
 
-        # --- Supported languages ---
+    # From here on, 'content' contains up to 800 chars of code for LLM
+} else { print("Processing regular file: " + p);
+        let content = open(abs_path, "r", encoding="utf-8", errors="ignore").read()[:800];
+    }
+    # normal file path
+   
         let supported_langs = [
             "python", "jac", "php", "javascript", "typescript", "java",
             "c", "cpp", "csharp", "go", "rust", "ruby", "swift", "kotlin",
@@ -238,18 +280,14 @@ def run_analysis(files: list, mode: str) {
         let result = self.build_ccg_llm(p, content, lang);
 
         if type(result) == dict {
-            if "file" not in result {
-                result["file"] = p;
-            }
+            if "file" not in result { result["file"] = p; }
             self.attach_ccg(result);
             self.parsed_count += 1;
         } else {
             print("Fallback summary mode for: " + p);
             let fallback = self.build_ccg_llm_summary(p, content, lang);
             if type(fallback) == dict {
-                if "file" not in fallback {
-                    fallback["file"] = p;
-                }
+                if "file" not in fallback { fallback["file"] = p; }
                 self.attach_ccg(fallback);
                 self.parsed_count += 1;
             } else {
@@ -257,8 +295,11 @@ def run_analysis(files: list, mode: str) {
             }
         }
     }
+
 }
+
 }
+
 sem CodeAnalyzer.build_ccg_llm = """
 You are a **fast, lightweight code structure parser**.
 
@@ -319,33 +360,4 @@ walker W { can run with entry { greet(); } }
 def greet() {}
 """;
 
-sem CodeAnalyzer.build_ccg_llm_summary = """
-You are a **minimal code summarizer**.
 
-TASK:
-Read the provided {lang} source code and extract only the first structural hints:
-- 1 class
-- 1 function
-- 1 node
-- 1 walker
-- 1 edge
-Return STRICT JSON (no markdown, no text).
-
-SCHEMA:
-{
-  "file": "<path>",
-  "classes": [{"name": "ClassName"}],
-  "functions": [{"name": "func_name"}],
-  "nodes": [{"name": "NodeName"}],
-  "walkers": [{"name": "WalkerName"}],
-  "edges": [{"name": "EdgeName"}],
-  "calls": []
-}
-
-RULES:
-1. Always include every key, even if empty.
-2. Stop scanning after first elements are found.
-3. Output must be valid JSON — no extra text.
-4. Use exact identifiers (case-sensitive).
-"""
-;
